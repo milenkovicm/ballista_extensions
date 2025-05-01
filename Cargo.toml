@@ -1,0 +1,37 @@
+[package]
+name = "ballista_extensions"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+async-trait = { version = "0.1" }
+
+ballista = { version = "45" }
+ballista-scheduler = { version = "45" }
+ballista-executor = { version = "45" }
+ballista-core = { version = "45" }
+
+datafusion = { version = "45" }
+datafusion-proto = { version = "45" }
+datafusion-proto-common = { version = "45" }
+
+futures = { version = "0.3" }
+futures-util = { version = "0.3" }
+
+log = "0.4"
+
+tokio = { version = "1", features = ["full"] }
+tokio-stream = { version = "0.1" }
+
+prost = { version = "0.13" }
+prost-types = { version = "0.13" }
+
+rand = { version = "0.9" }
+
+tonic = { version = "0.12" }
+[dev-dependencies]
+env_logger = "0.11"
+
+[build-dependencies]
+tonic-build = { version = "0.12" }
