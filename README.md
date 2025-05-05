@@ -2,6 +2,16 @@
 
 This project introduces additional features and custom extensions for the [Ballista distributed compute platform](https://github.com/apache/arrow-ballista). The goal is to enhance Ballista's capabilities by providing new logical and physical operators, utilities, and integration tools to support advanced data processing workflows.
 
+>
+> [!NOTE]
+>
+> This project has been part of "Extending DataFusion Ballista" show case series
+>
+> - [DataFusion Ballista Python UDF Support](https://github.com/milenkovicm/ballista_python)
+> - [DataFusion Ballista Read Support For Delta Table](https://github.com/milenkovicm/ballista_delta)
+> - [Extending DataFusion Ballista](https://github.com/milenkovicm/ballista_extensions)
+>
+
 This example will implement `sample()` method which will return a sampled subset of original `DataFrame`:
 
 ```rust
@@ -112,7 +122,71 @@ message LSample {
 
 See [proto/extension.proto](proto/extension.proto).
 
-and an implementation in [Rust code](src/codec/extension.rs) of the `LogicalExtensionCodec` trait, which handles conversion between Rust structures and protocol buffer definitions.
+`LogicalExtensionCodec` entedns `BallistaLogicalExtensionCodec` handling newly defined operator messages:
+
+```rust
+#[derive(Debug, Default)]
+pub struct ExtendedBallistaLogicalCodec {
+    inner: BallistaLogicalExtensionCodec,
+}
+
+impl LogicalExtensionCodec for ExtendedBallistaLogicalCodec {
+    fn try_decode(
+        &self,
+        buf: &[u8],
+        inputs: &[datafusion::logical_expr::LogicalPlan],
+        _ctx: &datafusion::prelude::SessionContext,
+    ) -> datafusion::error::Result<datafusion::logical_expr::Extension> {
+        let message =
+            LMessage::decode(buf).map_err(|e| DataFusionError::Internal(e.to_string()))?;
+
+        match message.extension {
+            Some(Extension::Sample(sample)) => {
+                let node = Arc::new(Sample {
+                    input: inputs
+                        .first()
+                        .ok_or(DataFusionError::Plan("expected input".to_string()))?
+                        .clone(),
+                    seed: sample.seed,
+                    fraction: sample.fraction,
+                });
+
+                Ok(datafusion::logical_expr::Extension { node })
+            }
+            None => plan_err!("Can't cast logical extension "),
+        }
+    }
+
+    fn try_encode(
+        &self,
+        node: &datafusion::logical_expr::Extension,
+        buf: &mut Vec<u8>,
+    ) -> datafusion::error::Result<()> {
+        if let Some(Sample { seed, fraction, .. }) = node.node.as_any().downcast_ref::<Sample>() {
+            let sample = LSample {
+                seed: *seed,
+                fraction: *fraction,
+            };
+            let message = LMessage {
+                extension: Some(super::messages::l_message::Extension::Sample(sample)),
+            };
+
+            message
+                .encode(buf)
+                .map_err(|e| DataFusionError::Internal(e.to_string()))?;
+
+            Ok(())
+        } else {
+            self.inner.try_encode(node, buf)
+        }
+    }
+    // Additional implementation omitted for brevity
+}
+```
+
+[src/codec/extension.rs](src/codec/extension.rs)
+
+in short,implementation of the `LogicalExtensionCodec` trait, which handles conversion between Rust structures and protocol buffer definitions.
 
 ## Logical to Physical Plan Translation
 
@@ -159,4 +233,82 @@ let state = SessionStateBuilder::new()
     .build();
 ```
 
-Finally, the generated physical plan is serialized using the [physical plan codec](src/codec/extension.rs) and transmitted to the executor(s).
+Finally, the generated physical plan is serialized using the [physical plan extension codec](src/codec/extension.rs) and transmitted to the executor(s). Implementation is an extension of `BallistaPhysicalExtensionCodec`:
+
+```rust
+#[derive(Debug, Default)]
+pub struct ExtendedBallistaPhysicalCodec {
+    inner: BallistaPhysicalExtensionCodec,
+}
+
+impl PhysicalExtensionCodec for ExtendedBallistaPhysicalCodec {
+    fn try_decode(
+        &self,
+        buf: &[u8],
+        inputs: &[std::sync::Arc<dyn datafusion::physical_plan::ExecutionPlan>],
+        registry: &dyn datafusion::execution::FunctionRegistry,
+    ) -> datafusion::error::Result<std::sync::Arc<dyn datafusion::physical_plan::ExecutionPlan>>
+    {
+        let message =
+            PMessage::decode(buf).map_err(|e| DataFusionError::Internal(e.to_string()))?;
+
+        match message.extension {
+            Some(super::messages::p_message::Extension::Sample(PSample {
+                fraction, seed, ..
+            })) => {
+                let input = inputs
+                    .first()
+                    .ok_or(DataFusionError::Plan("expected input".to_string()))?
+                    .clone();
+
+                let node = Arc::new(SampleExec::new(fraction, seed, input));
+
+                Ok(node)
+            }
+
+            Some(super::messages::p_message::Extension::Opaque(opaque)) => {
+                self.inner.try_decode(&opaque, inputs, registry)
+            }
+            None => plan_err!("Can't cast physical extension "),
+        }
+    }
+
+    fn try_encode(
+        &self,
+        node: std::sync::Arc<dyn datafusion::physical_plan::ExecutionPlan>,
+        buf: &mut Vec<u8>,
+    ) -> datafusion::error::Result<()> {
+        if let Some(SampleExec { fraction, seed, .. }) = node.as_any().downcast_ref::<SampleExec>()
+        {
+            let message = PMessage {
+                extension: Some(super::messages::p_message::Extension::Sample(PSample {
+                    fraction: *fraction,
+                    seed: *seed,
+                })),
+            };
+
+            message
+                .encode(buf)
+                .map_err(|e| DataFusionError::Internal(e.to_string()))?;
+
+            Ok(())
+        } else {
+            let mut opaque = vec![];
+            self.inner
+                .try_encode(node, &mut opaque)
+                .map_err(|e| DataFusionError::Internal(e.to_string()))?;
+
+            let message = PMessage {
+                extension: Some(super::messages::p_message::Extension::Opaque(opaque)),
+            };
+
+            message
+                .encode(buf)
+                .map_err(|e| DataFusionError::Internal(e.to_string()))?;
+
+            Ok(())
+        }
+    }
+}
+
+```
