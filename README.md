@@ -27,7 +27,7 @@ To implement this functionality, it is necessary to implement new logical and ph
 
 >
 > [!WARNING]  
-> Please do not use implemented sampling operator for production, probably statisticians would not approve.
+> Please do not use implemented sampling operator for production, statisticians would not approve it, probably.
 >
 
 This project outlines the steps required to implement this functionality and integrate it with Ballista:
