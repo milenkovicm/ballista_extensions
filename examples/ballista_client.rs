@@ -10,11 +10,16 @@ use datafusion::{
 };
 use std::sync::Arc;
 
+/// # Custom Ballista Client
+///
+/// This example demonstrates how to crate custom ballista client with support
+/// for custom logical and physical codecs.
+///
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let _ = env_logger::builder()
         .filter_level(log::LevelFilter::Info)
-        .parse_filters("ballista=debug,ballista_scheduler=debug,ballista_executor=debug")
         .is_test(true)
         .try_init();
 

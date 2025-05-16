@@ -24,10 +24,6 @@ async fn main() -> ballista_core::error::Result<()> {
         .is_test(true)
         .try_init();
 
-    //
-    //
-    //
-
     let config: SchedulerConfig = SchedulerConfig {
         override_logical_codec: Some(Arc::new(ExtendedBallistaLogicalCodec::default())),
         override_physical_codec: Some(Arc::new(ExtendedBallistaPhysicalCodec::default())),
@@ -35,13 +31,13 @@ async fn main() -> ballista_core::error::Result<()> {
         ..Default::default()
     };
 
-    let addr = format!("{}:{}", config.bind_host, config.bind_port);
-    let addr = addr
+    let address = format!("{}:{}", config.bind_host, config.bind_port);
+    let address = address
         .parse()
         .map_err(|e: AddrParseError| BallistaError::Configuration(e.to_string()))?;
 
     let cluster = BallistaCluster::new_from_config(&config).await?;
-    start_server(cluster, addr, Arc::new(config)).await?;
+    start_server(cluster, address, Arc::new(config)).await?;
 
     Ok(())
 }

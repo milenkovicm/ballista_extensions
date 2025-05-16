@@ -1,6 +1,8 @@
 # Ballista Extensions
 
-This project introduces additional features and custom extensions for the [Ballista distributed compute platform](https://github.com/apache/arrow-ballista). The goal is to enhance Ballista's capabilities by providing new logical and physical operators, utilities, and integration tools to support advanced data processing workflows.
+This project demonstrates possible extensions mechanisms for the [Ballista distributed compute platform](https://github.com/apache/arrow-ballista).
+
+The goal of this small project is to enhance Ballista's capabilities by providing new logical and physical operators, utilities, and integration tools to support additional data processing workflows.
 
 >
 > [!NOTE]
@@ -12,7 +14,7 @@ This project introduces additional features and custom extensions for the [Balli
 > - [Extending DataFusion Ballista](https://github.com/milenkovicm/ballista_extensions)
 >
 
-This example will implement `sample()` method which will return a sampled subset of original `DataFrame`:
+This example will implement [`sample()`](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.sample.html) operator which will return a sampled subset of original `DataFrame`:
 
 ```rust
 let ctx = SessionContext::remote_with_state("df://localhost:50050", state).await?;
@@ -23,14 +25,14 @@ let df = ctx.read_parquet("data/", Default::default()).await?;
 let df = df.sample(0.30, None)?;
 ```
 
-To implement this functionality, it is necessary to implement new logical and physical plan operators.
+To implement this functionality, it is necessary to implement new logical plan extension, physical operators and extend `DataFrame` to expose new operator.
 
 >
 > [!WARNING]  
 > Please do not use implemented sampling operator for production, statisticians would not approve it, probably.
 >
 
-This project outlines the steps required to implement this functionality and integrate it with Ballista:
+This demo will provide:
 
 - Custom DataFusion (logical and physical) nodes.
 - Logical and physical extension codecs.
@@ -122,7 +124,7 @@ message LSample {
 
 See [proto/extension.proto](proto/extension.proto).
 
-`LogicalExtensionCodec` entedns `BallistaLogicalExtensionCodec` handling newly defined operator messages:
+`LogicalExtensionCodec` extends `BallistaLogicalExtensionCodec` handling newly defined operator messages:
 
 ```rust
 #[derive(Debug, Default)]
@@ -312,3 +314,70 @@ impl PhysicalExtensionCodec for ExtendedBallistaPhysicalCodec {
 }
 
 ```
+
+This should be all moving parts necessary to extend ballista functionality. Last step would be to configure [scheduler](examples/ballista_scheduler.rs) and [executor](examples/ballista_executor.rs) to use new features.
+
+`SchedulerConfig` should be configured overriding logical, physical codec and session builder function:
+
+```rust
+let config: SchedulerConfig = SchedulerConfig {
+    override_logical_codec: Some(Arc::new(ExtendedBallistaLogicalCodec::default())),
+    override_physical_codec: Some(Arc::new(ExtendedBallistaPhysicalCodec::default())),
+    override_session_builder: Some(Arc::new(extended_state_producer)),
+    ..Default::default()
+};
+
+let address = format!("{}:{}", config.bind_host, config.bind_port);
+let address = address
+    .parse()
+    .map_err(|e: AddrParseError| BallistaError::Configuration(e.to_string()))?;
+
+let cluster = BallistaCluster::new_from_config(&config).await?;
+
+start_server(cluster, address, Arc::new(config)).await?;
+```
+
+```rust
+pub fn extended_state_producer(config: SessionConfig) -> datafusion::error::Result<SessionState> {
+    // we need custom query planner to convert logical to physical operator
+    let query_planner = Arc::new(QueryPlannerWithExtensions::default());
+
+    let state = SessionStateBuilder::new()
+        .with_config(config)
+        .with_query_planner(query_planner)
+        .with_default_features()
+        .build();
+
+    Ok(state)
+}
+```
+
+similarly for `ExecutorProcessConfig`:
+
+```rust
+let config: ExecutorProcessConfig = ExecutorProcessConfig {
+    override_logical_codec: Some(Arc::new(ExtendedBallistaLogicalCodec::default())),
+    override_physical_codec: Some(Arc::new(ExtendedBallistaPhysicalCodec::default())),
+
+    ..Default::default()
+};
+
+start_executor_process(Arc::new(config)).await
+```
+
+## Conclusion
+
+This project demonstrates how to extend Ballista with custom logical and physical operators, codecs, and planner logic. By following the outlined steps, you can introduce new DataFrame operations and ensure they are supported throughout the distributed query lifecycle.
+
+For more details, refer to the source code and the linked example files. Contributions and feedback are welcome!
+
+---
+**Related links:**
+
+- [Ballista Extensions Source Code](https://github.com/milenkovicm/ballista_extensions)
+- [Apache Arrow Ballista](https://datafusion.apache.org/ballista/)
+- [DataFusion Documentation](https://datafusion.apache.org)
+- [Rust Tonic (GRPC) support](https://docs.rs/tonic/latest/tonic/)
+
+---
+**License:** MIT

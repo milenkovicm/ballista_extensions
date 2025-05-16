@@ -16,10 +16,6 @@ async fn main() -> ballista_core::error::Result<()> {
         .is_test(true)
         .try_init();
 
-    //
-    //
-    //
-
     let config: ExecutorProcessConfig = ExecutorProcessConfig {
         override_logical_codec: Some(Arc::new(ExtendedBallistaLogicalCodec::default())),
         override_physical_codec: Some(Arc::new(ExtendedBallistaPhysicalCodec::default())),
