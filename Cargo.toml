@@ -8,14 +8,14 @@ license = "MIT"
 
 async-trait = { version = "0.1" }
 
-ballista = { version = "46" }
-ballista-scheduler = { version = "46" }
-ballista-executor = { version = "46" }
-ballista-core = { version = "46" }
+ballista = { version = "47" }
+ballista-scheduler = { version = "47" }
+ballista-executor = { version = "47" }
+ballista-core = { version = "47" }
 
-datafusion = { version = "46" }
-datafusion-proto = { version = "46" }
-datafusion-proto-common = { version = "46" }
+datafusion = { version = "47" }
+datafusion-proto = { version = "47" }
+datafusion-proto-common = { version = "47" }
 
 futures = { version = "0.3" }
 futures-util = { version = "0.3" }
