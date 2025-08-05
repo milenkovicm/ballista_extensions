@@ -9,7 +9,7 @@ license = "MIT"
 async-trait = { version = "0.1" }
 
 ballista = { version = "47" }
-ballista-scheduler = { version = "47" }
+ballista-scheduler = { version = "48" }
 ballista-executor = { version = "47" }
 ballista-core = { version = "47" }
 
