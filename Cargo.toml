@@ -13,9 +13,9 @@ ballista-scheduler = { version = "48" }
 ballista-executor = { version = "48" }
 ballista-core = { version = "48" }
 
-datafusion = { version = "48" }
-datafusion-proto = { version = "48" }
-datafusion-proto-common = { version = "48" }
+datafusion = { version = "49" }
+datafusion-proto = { version = "49" }
+datafusion-proto-common = { version = "49" }
 
 futures = { version = "0.3" }
 futures-util = { version = "0.3" }
