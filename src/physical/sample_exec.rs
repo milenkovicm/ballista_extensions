@@ -6,6 +6,7 @@
 //!
 //! **NOTE: sampling implementation is just for illustrative purposes**
 
+use datafusion::error::DataFusionError;
 use datafusion::physical_plan::{
     DisplayAs, ExecutionPlan, stream::RecordBatchReceiverStreamBuilder,
 };
@@ -61,9 +62,20 @@ impl ExecutionPlan for SampleExec {
 
     fn with_new_children(
         self: std::sync::Arc<Self>,
-        _children: Vec<std::sync::Arc<dyn ExecutionPlan>>,
+        children: Vec<std::sync::Arc<dyn ExecutionPlan>>,
     ) -> datafusion::error::Result<std::sync::Arc<dyn ExecutionPlan>> {
-        Ok(self)
+        let input = children
+            .get(0)
+            .ok_or(DataFusionError::Internal(
+                "single input is expected".to_string(),
+            ))?
+            .clone();
+
+        Ok(Arc::new(Self {
+            input,
+            fraction: self.fraction,
+            seed: self.seed,
+        }))
     }
 
     fn execute(
