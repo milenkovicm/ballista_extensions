@@ -26,7 +26,7 @@
 use std::sync::Arc;
 
 use ballista_core::serde::{BallistaLogicalExtensionCodec, BallistaPhysicalExtensionCodec};
-use datafusion::{common::plan_err, error::DataFusionError};
+use datafusion::{common::plan_err, error::DataFusionError, execution::TaskContext};
 use datafusion_proto::{
     logical_plan::LogicalExtensionCodec, physical_plan::PhysicalExtensionCodec,
 };
@@ -49,7 +49,7 @@ impl LogicalExtensionCodec for ExtendedBallistaLogicalCodec {
         &self,
         buf: &[u8],
         inputs: &[datafusion::logical_expr::LogicalPlan],
-        _ctx: &datafusion::prelude::SessionContext,
+        _ctx: &TaskContext,
     ) -> datafusion::error::Result<datafusion::logical_expr::Extension> {
         let message =
             LMessage::decode(buf).map_err(|e| DataFusionError::Internal(e.to_string()))?;
@@ -100,7 +100,7 @@ impl LogicalExtensionCodec for ExtendedBallistaLogicalCodec {
         buf: &[u8],
         table_ref: &datafusion::sql::TableReference,
         schema: datafusion::arrow::datatypes::SchemaRef,
-        ctx: &datafusion::prelude::SessionContext,
+        ctx: &TaskContext,
     ) -> datafusion::error::Result<std::sync::Arc<dyn datafusion::catalog::TableProvider>> {
         self.inner
             .try_decode_table_provider(buf, table_ref, schema, ctx)
@@ -132,7 +132,7 @@ impl PhysicalExtensionCodec for ExtendedBallistaPhysicalCodec {
         &self,
         buf: &[u8],
         inputs: &[std::sync::Arc<dyn datafusion::physical_plan::ExecutionPlan>],
-        registry: &dyn datafusion::execution::FunctionRegistry,
+        registry: &TaskContext,
     ) -> datafusion::error::Result<std::sync::Arc<dyn datafusion::physical_plan::ExecutionPlan>>
     {
         let message =

@@ -61,7 +61,8 @@ mod test {
 
         let plan = result.logical_plan();
         let bytes = logical_plan_to_bytes_with_extension_codec(&plan, &codec)?;
-        let new_plan = logical_plan_from_bytes_with_extension_codec(&bytes, &ctx, &codec)?;
+        let new_plan =
+            logical_plan_from_bytes_with_extension_codec(&bytes, &ctx.task_ctx(), &codec)?;
 
         assert_eq!(plan, &new_plan);
 
@@ -79,7 +80,8 @@ mod test {
 
         let plan = result.create_physical_plan().await?;
         let bytes = physical_plan_to_bytes_with_extension_codec(plan.clone(), &codec)?;
-        let new_plan = physical_plan_from_bytes_with_extension_codec(&bytes, &ctx, &codec)?;
+        let new_plan =
+            physical_plan_from_bytes_with_extension_codec(&bytes, &ctx.task_ctx(), &codec)?;
 
         let plan_formatted = format!("{}", displayable(plan.as_ref()).indent(false));
         let new_plan_formatted = format!("{}", displayable(new_plan.as_ref()).indent(false));

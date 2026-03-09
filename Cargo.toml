@@ -8,14 +8,14 @@ license = "MIT"
 
 async-trait = { version = "0.1" }
 
-ballista = { version = "48" }
-ballista-scheduler = { version = "48" }
-ballista-executor = { version = "48" }
-ballista-core = { version = "48" }
+ballista = { version = "52" }
+ballista-scheduler = { version = "52", default-features=false, features = ["build-binary"] }
+ballista-executor = { version = "52" }
+ballista-core = { version = "52" }
 
-datafusion = { version = "48" }
-datafusion-proto = { version = "48" }
-datafusion-proto-common = { version = "48" }
+datafusion = { version = "52" }
+datafusion-proto = { version = "52" }
+datafusion-proto-common = { version = "52" }
 
 futures = { version = "0.3" }
 futures-util = { version = "0.3" }
@@ -25,14 +25,16 @@ log = "0.4"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = { version = "0.1" }
 
-prost = { version = "0.13" }
-prost-types = { version = "0.13" }
+prost = { version = "0.14" }
+prost-types = { version = "0.14" }
 
-rand = { version = "0.9" }
+rand = { version = "0.10" }
 
-tonic = { version = "0.12" }
+tonic = { version = "0.14" }
+substrait = { version = "0.62.2" }
 [dev-dependencies]
 env_logger = "0.11"
 
 [build-dependencies]
-tonic-build = { version = "0.12" }
+tonic-build = { version = "0.14" }
+tonic-prost-build = { version = "0.14" }

@@ -14,7 +14,7 @@ use futures_util::stream::StreamExt;
 use std::sync::Arc;
 
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 
 #[derive(Debug)]
 pub struct SampleExec {
@@ -93,7 +93,7 @@ impl ExecutionPlan for SampleExec {
         // Create a random number generator, optionally seeded
         let mut rng: StdRng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed as u64),
-            None => StdRng::from_os_rng(),
+            None => rand::make_rng(),
         };
 
         downstream.spawn(async move {
@@ -107,8 +107,9 @@ impl ExecutionPlan for SampleExec {
 
                     let boolean_array = datafusion::arrow::array::BooleanArray::from(mask);
 
-                    datafusion::arrow::compute::filter_record_batch(&b, &boolean_array)
-                        .map_err(|e| datafusion::error::DataFusionError::ArrowError(e, None))
+                    datafusion::arrow::compute::filter_record_batch(&b, &boolean_array).map_err(
+                        |e| datafusion::error::DataFusionError::ArrowError(Box::new(e), None),
+                    )
                 });
 
                 tx.send(result).await.unwrap();

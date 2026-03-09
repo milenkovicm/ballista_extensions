@@ -5,7 +5,7 @@ fn main() -> Result<(), String> {
     println!("cargo:rerun-if-changed=proto/datafusion_common.proto");
     println!("cargo:rerun-if-changed=proto/extension.proto");
 
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .extern_path(".datafusion_common", "::datafusion_proto_common")
         .protoc_arg("--experimental_allow_proto3_optional")
         .compile_protos(&["proto/extension.proto"], &["proto"])
