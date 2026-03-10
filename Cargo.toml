@@ -31,7 +31,7 @@ prost-types = { version = "0.14" }
 rand = { version = "0.10" }
 
 tonic = { version = "0.14" }
-substrait = { version = "0.62.2" }
+
 [dev-dependencies]
 env_logger = "0.11"
 
