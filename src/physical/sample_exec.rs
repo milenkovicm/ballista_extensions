@@ -65,7 +65,7 @@ impl ExecutionPlan for SampleExec {
         children: Vec<std::sync::Arc<dyn ExecutionPlan>>,
     ) -> datafusion::error::Result<std::sync::Arc<dyn ExecutionPlan>> {
         let input = children
-            .get(0)
+            .first()
             .ok_or(DataFusionError::Internal(
                 "single input is expected".to_string(),
             ))?
@@ -99,24 +99,30 @@ impl ExecutionPlan for SampleExec {
         downstream.spawn(async move {
             while let Some(batch) = stream.next().await {
                 let result = batch.and_then(|b| {
-                    // we can probably get better way of creating sample
-                    // using rng.fill, it is good enough for this poc
-                    let mask: Vec<bool> = (0..b.num_rows())
-                        .map(|_| rng.random_range(0.0..=1.0) < fraction)
-                        .collect();
+                     // Use SIMD-optimized fill for u32, then compare against precomputed threshold
+                    let num_rows = b.num_rows();
+                    let mut random_buffer = vec![0u32; num_rows];
+                    rng.fill(&mut random_buffer);
+
+                     // Precompute threshold to avoid float division in the loop
+                    let threshold = (fraction * u32::MAX as f32) as u32;
+                    let mask: Vec<bool> = random_buffer
+                         .into_iter()
+                         .map(|r| r < threshold)
+                         .collect();
 
                     let boolean_array = datafusion::arrow::array::BooleanArray::from(mask);
 
                     datafusion::arrow::compute::filter_record_batch(&b, &boolean_array).map_err(
-                        |e| datafusion::error::DataFusionError::ArrowError(Box::new(e), None),
-                    )
-                });
+                         |e| datafusion::error::DataFusionError::ArrowError(Box::new(e), None),
+                     )
+                 });
 
                 tx.send(result).await.unwrap();
-            }
+             }
             Ok(())
-        });
+         });
 
         Ok(downstream.build())
-    }
+     }
 }
